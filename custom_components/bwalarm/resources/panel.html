@@ -117,6 +117,7 @@ v
                           </template>
                           <mwc-button id='arm-home' on-click='callAlarmService' data-call='arm' data-arm='alarm_arm_home_from_panel' raised>Home</mwc-button>
                           <mwc-button id='arm-away' on-click='callAlarmService' data-call='arm' data-arm='alarm_arm_away_from_panel' raised>Away</mwc-button>
+                          <mwc-button id='arm-garage' on-click='callAlarmService' data-call='arm' data-arm='alarm_arm_garage_from_panel' raised>Garage</mwc-button>
                         </template>
                       </template>
                       <template is='dom-if' if='[[attemptedArm]]'>
@@ -159,6 +160,7 @@ v
                                 </template>
                                 <mwc-button id='arm-home1' class='action-button' on-click='callAlarmService' data-call='arm' data-arm='alarm_arm_home_from_panel' raised>Home</mwc-button>
                                 <mwc-button id='arm-away1' class='action-button' on-click='callAlarmService' data-call='arm' data-arm='alarm_arm_away_from_panel' raised>Away</mwc-button>
+                                <mwc-button id='arm-garage1' class='action-button' on-click='callAlarmService' data-call='arm' data-arm='alarm_arm_garage_from_panel' raised>Garage</mwc-button>
                               </template>
                             </template>
                           </div>
@@ -847,6 +849,13 @@ v
 
                         <div class='setting-outer vertical layout'>
                           <div class='setting-inner horizontal layout'>
+                            <span class='info-header'>Garage: </span>
+                            <paper-toggle-button id='user-garage-permission' checked='true' class='setting-toggle'></paper-toggle-button>
+                          </div>
+                        </div>
+
+                        <div class='setting-outer vertical layout'>
+                          <div class='setting-inner horizontal layout'>
                             <span class='info-header'>Perimeter: </span>
                             <paper-toggle-button id='user-perimeter-permission' checked='true' class='setting-toggle'></paper-toggle-button>
                           </div>
@@ -1073,6 +1082,72 @@ v
                         </div>
                       </div>
 
+                      <h1>Garage Mode</h1>
+
+                      <div class='setting-outer horizontal layout'>
+                        <div class='setting-inner vertical layout'>
+                          <span class='info-header'>Pending (Exit) Time: </span>
+                          <span class='info-detail'>Grace time in seconds before the alarm is armed. Any sensor tripped within this time period will not trigger the alarm. Also known as 'Exit Time'.<br>Default: 25 seconds</span>
+                          <div class='setting-input horizontal layout'>
+                            <paper-input id='armed_garage-pending_time' value='[[alarm.attributes.states.armed_garage.pending_time]]' placeholder='Pending Time'></paper-input>
+                            <paper-icon-button data-type='input_text' data-setting='states' data-mode='armed_garage' data-attribute='pending_time' on-click='settingsSave' icon='mdi:check-circle-outline'></paper-icon-button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class='setting-outer horizontal layout'>
+                        <div class='setting-inner vertical layout'>
+                          <span class='info-header'>Warning (Entry) Time: </span>
+                          <span class='info-detail'>Grace time in seconds before the alarm is triggered. Any sensor tripped within this time period will not trigger the alarm. Also known as 'Entry Time'.<br>Default: 25 seconds</span>
+                          <div class='setting-input horizontal layout'>
+                            <paper-input id='armed_garage-warning_time' value='[[alarm.attributes.states.armed_garage.warning_time]]' placeholder='Warning Time'></paper-input>
+                            <paper-icon-button data-type='input_text' data-setting='states' data-mode='armed_garage' data-attribute='warning_time' on-click='settingsSave' icon='mdi:check-circle-outline'></paper-icon-button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class='setting-outer horizontal layout'>
+                        <div class='setting-inner vertical layout'>
+                          <span class='info-header'>Trigger Time: </span>
+                          <span class='info-detail'>The amount of time in seconds the alarm stays triggered before returning to its previous state.<br>Default: 300 seconds</span>
+                          <div class='setting-input horizontal layout'>
+                            <paper-input id='armed_garage-trigger_time' value='[[alarm.attributes.states.armed_garage.trigger_time]]' placeholder='Trigger Time'></paper-input>
+                            <paper-icon-button data-type='input_text' data-setting='states' data-mode='armed_garage' data-attribute='trigger_time' on-click='settingsSave' icon='mdi:check-circle-outline'></paper-icon-button>
+                          </div>
+                        </div>
+
+                      </div>
+
+                      <div class='horizontal layout' id='sensors-away-immediate'>
+
+                        <div class='vertical layout'>
+                          <h2>Immediate</h2>
+                          <paper-listbox id='sensors-checkboxs' class='vertical layout' attr-for-selected='title' multi selected-values='{{alarm.attributes.states.armed_garage.immediate}}' selected-attribute='checked' >
+                            <template is='dom-repeat' items='{{sensors}}' as='sensor'>
+                              <checkbox type='checkbox' class='checkbox' title="[[sensor]]" on-click='settingsSave' data-setting='sensor_select' data-mode='armed_garage' data-group='immediate' >[[computeFriendlyName(sensor)]]</checkbox>
+                            </template>
+                          </paper-listbox>
+                        </div>
+
+                        <div class='sensor vertical layout'>
+                          <h2>Delayed</h2>
+                          <paper-listbox id='sensors-checkboxs1' class='vertical layout' attr-for-selected="title" multi selected-values={{alarm.attributes.states.armed_garage.delayed}} selected-attribute="checked" >
+                            <template is='dom-repeat' items='{{sensors}}' as='sensor'>
+                              <checkbox type='checkbox' class='checkbox' title="{{sensor}}" on-click='settingsSave' data-setting='sensor_select' data-mode='armed_garage' data-group='delayed' >[[computeFriendlyName(sensor)]]</checkbox>
+                            </template>
+                          </paper-listbox>
+                        </div>
+
+                        <div class='vertical layout'>
+                          <h2>Override</h2>
+                          <paper-listbox id='sensors-checkboxs2' class='vertical layout' attr-for-selected="title" multi selected-values={{alarm.attributes.states.armed_garage.override}} selected-attribute="checked" >
+                            <template is='dom-repeat' items='{{sensors}}' as='sensor'>
+                              <checkbox type='checkbox' class='checkbox' title="{{sensor}}" on-click='settingsSave' data-setting='sensor_select' data-mode='armed_garage' data-group='override' >[[computeFriendlyName(sensor)]]</checkbox>
+                            </template>
+                          </paper-listbox>
+                        </div>
+                      </div>
+
                     </div>
 
                     <!-- ########################################################################### @FLOORPLAN ##################################################################################################### -->
@@ -1207,6 +1282,17 @@ v
                           <div class='setting-input horizontal layout'>
                             <paper-input id='payload_arm_away' value='{{alarm.attributes.mqtt.payload_arm_away}}' placeholder='Payload Away'></paper-input>
                             <paper-icon-button data-type='input_text' data-setting='mqtt' data-attribute='payload_arm_away' on-click='settingsSave' icon='mdi:check-circle-outline'></paper-icon-button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class='setting-outer horizontal layout'>
+                        <div class='setting-inner vertical layout'>
+                          <span class='info-header'>Arm Garage command: </span>
+                          <span class='info-detail'>Command to set armed-garage mode.<br>Default: ARM_GARAGE</span>
+                          <div class='setting-input horizontal layout'>
+                            <paper-input id='payload_arm_garage' value='{{alarm.attributes.mqtt.payload_arm_garage}}' placeholder='Payload Garage'></paper-input>
+                            <paper-icon-button data-type='input_text' data-setting='mqtt' data-attribute='payload_arm_garage' on-click='settingsSave' icon='mdi:check-circle-outline'></paper-icon-button>
                           </div>
                         </div>
                       </div>
@@ -1684,6 +1770,11 @@ v
             'description':'The color of the border surrounding the action buttons',
             'color': (theme != null && theme.action_button_border_color != null) ? theme.action_button_border_color  : 'black'};
 
+            this.settingColors[31] = {
+              'name':'armed_garage_color', 'header':'Armed in \'Garage\' Mode', 'theme':themeName,
+              'description':'When the alarm is set in \'Garage Mode\' the panel will display this color in both the top header background and the centre panel background',
+              'color': (theme != null && theme.armed_garage_color != null) ? theme.armed_garage_color : 'black'};
+
           this.addColorPicker();
         }
 
@@ -1867,6 +1958,7 @@ v
                 case 5: return 'Alarm has been tripped by ' + this.computeFriendlyName(entry[3]);
                 case 6: return 'Panel Locked';
                 case 8: return 'set the alarm in Night mode';
+                case 9: return 'set the alarm in Garage mode';
               }
               var err = "unknown message \"" + entry[2] + "\"";
               console.log("computeLog: ", err);
@@ -1921,7 +2013,8 @@ v
             var states = {
               'armed_away' : {'immediate':[], 'delayed':[], 'override':[], 'pending_time': 0, 'warning_time': 0, 'trigger_time': 600},
               'armed_home' : {'immediate':[], 'delayed':[], 'override':[], 'pending_time': 0, 'warning_time': 0, 'trigger_time': 600},
-              'armed_night' : {'immediate':[], 'delayed':[], 'override':[], 'pending_time': 0, 'warning_time': 0, 'trigger_time': 600}
+              'armed_night' : {'immediate':[], 'delayed':[], 'override':[], 'pending_time': 0, 'warning_time': 0, 'trigger_time': 600},
+              'armed_garage' : {'immediate':[], 'delayed':[], 'override':[], 'pending_time': 0, 'warning_time': 0, 'trigger_time': 600}
             };
             this.settingsUpdate('states', states);
           }
@@ -2306,6 +2399,7 @@ v
             case 'warning':       return 'warning';
             case 'triggered':     return 'triggered';
             case 'armed_night':   return 'night';
+            case 'armed_garage':  return 'garage';
           }
           return state;
         }
@@ -2748,6 +2842,7 @@ v
               if (call == 'alarm_arm_home') var overrideMode = 'armed_home';
               if (call == 'alarm_arm_away') var overrideMode = 'armed_away';
               if (call == 'alarm_arm_night') var overrideMode = 'armed_night';
+              if (call == 'alarm_arm_garage') var overrideMode = 'armed_garage';
 
               //No: return so display message
               if (this.alarm.attributes.states[overrideMode].override.indexOf(this.allsensors[sensor].entity_id) == -1){
@@ -2765,9 +2860,10 @@ v
 
         service_name2arm_state(service_name) {
           switch(service_name) {
-            case 'alarm_arm_home_from_panel':  return 'armed_home';
-            case 'alarm_arm_away_from_panel':  return 'armed_away';
-            case 'alarm_arm_night_from_panel': return 'armed_night';
+            case 'alarm_arm_home_from_panel':   return 'armed_home';
+            case 'alarm_arm_away_from_panel':   return 'armed_away';
+            case 'alarm_arm_night_from_panel':  return 'armed_night';
+            case 'alarm_arm_garage_from_panel': return 'armed_garage';
             default:
               var msg = "service_name2arm_state: invalid service name \"" + service_name + "\"";
               console.log(msg);

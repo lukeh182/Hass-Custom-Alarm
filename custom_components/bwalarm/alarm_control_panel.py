@@ -27,11 +27,11 @@ from collections import OrderedDict
 from homeassistant.const         import (
     ## SERVICES ##
     SERVICE_ALARM_ARM_NIGHT, SERVICE_ALARM_ARM_HOME, SERVICE_ALARM_ARM_AWAY,
-    SERVICE_ALARM_DISARM,
+    SERVICE_ALARM_DISARM, SERVICE_ALARM_ARM_GARAGE,
     # STATES
     STATE_ALARM_DISARMED, STATE_ALARM_PENDING,
     STATE_ALARM_ARMED_NIGHT, STATE_ALARM_ARMED_HOME, STATE_ALARM_ARMED_AWAY,
-    STATE_ALARM_TRIGGERED,
+    STATE_ALARM_TRIGGERED, STATE_ALARM_ARMED_GARAGE
     ## CONFIG PARAMETERS ##
     CONF_PLATFORM, CONF_NAME, CONF_CODE,
     CONF_PENDING_TIME, CONF_DELAY_TIME, CONF_TRIGGER_TIME,
@@ -79,7 +79,7 @@ INT_ATTR_STATE_CHECK_BEFORE_ARM = 'check_before_arm'
 OBSOLETE_STATE_ALARM_ARMED_PERIMETER    = 'armed_perimeter'
 STATE_ALARM_WARNING                 = 'warning'
 
-SUPPORTED_PENDING_STATES            = [STATE_ALARM_ARMED_NIGHT, STATE_ALARM_ARMED_HOME, STATE_ALARM_ARMED_AWAY]
+SUPPORTED_PENDING_STATES            = [STATE_ALARM_ARMED_NIGHT, STATE_ALARM_ARMED_HOME, STATE_ALARM_ARMED_AWAY, STATE_ALARM_ARMED_GARAGE]
 
 SUPPORTED_STATES                    = [STATE_ALARM_DISARMED, STATE_ALARM_PENDING, STATE_ALARM_WARNING, STATE_ALARM_TRIGGERED] + SUPPORTED_PENDING_STATES
 
@@ -114,6 +114,7 @@ CONF_PICTURE                       = 'picture'
 CONF_HOME_PERM                     = 'home_permision'
 CONF_AWAY_PERM                     = 'away_permission'
 CONF_PERI_PERM                     = 'perimiter_permission'
+CONF_GARAGE_PERM                   = 'garage_permission'
 CONF_ENABLED                       = 'enabled'
 CONF_IGNORE_OPEN_SENSORS           = 'ignore_open_sensors'
 CONF_CODE_TO_ARM                   = 'code_to_arm'
@@ -155,6 +156,7 @@ CONF_TRIGGERED_Color              = 'triggered_color'
 CONF_ARMED_AWAY_Color             = 'armed_away_color'
 CONF_ARMED_HOME_Color             = 'armed_home_color'
 CONF_PERIMETER_Color              = 'perimeter_color'
+CONF_GARAGE_Color                 = 'garage_color'
 
 #//-----------------------MQTT RELATED-------------------------------
 CONF_MQTT                          = 'mqtt'
@@ -164,6 +166,7 @@ CONF_PAYLOAD_DISARM                = 'payload_disarm'
 CONF_PAYLOAD_ARM_HOME              = 'payload_arm_home'
 CONF_PAYLOAD_ARM_AWAY              = 'payload_arm_away'
 CONF_PAYLOAD_ARM_NIGHT             = 'payload_arm_night'
+CONF_PAYLOAD_ARM_GARAGE            = 'payload_arm_garage'
 CONF_QOS                           = 'qos'
 CONF_STATE_TOPIC                   = 'state_topic'
 CONF_COMMAND_TOPIC                 = 'command_topic'
@@ -190,6 +193,7 @@ class Events(enum.Enum):
     Disarm                   = 6
     Trigger                  = 7
     ArmNight                 = 8
+    ArmGarage                = 9
 
 EATTR_SERVICE   = 'service'
 EATTR_STATE     = 'state'
@@ -206,6 +210,10 @@ event2name = {
     Events.ArmAway: {
         EATTR_SERVICE   :   SERVICE_ALARM_ARM_AWAY,
         EATTR_STATE     :   STATE_ALARM_ARMED_AWAY
+        },
+    Events.ArmGarage: {
+        EATTR_SERVICE   :   SERVICE_ALARM_ARM_GARAGE,
+        EATTR_STATE     :   STATE_ALARM_ARMED_GARAGE
         }
     }
 
@@ -218,6 +226,7 @@ class LOG(enum.Enum):
     TRIPPED = 5 #'Alarm has been tripped by: '
     LOCKED = 6 #'Panel Locked
     PERIMETER = 8 #'set the alarm in Perimeter mode'
+    GARAGE = 9 #'set the alarm in Garage mode'
 
 DEFAULT_PENDING_TIME = 0   #0 Seconds
 DEFAULT_WARNING_TIME = 0   #0 Seconds
@@ -279,6 +288,7 @@ MQTT_SCHEMA = vol.Schema({
     vol.Optional(CONF_PAYLOAD_ARM_AWAY, default='ARM_AWAY'):                cv.string,
     vol.Optional(CONF_PAYLOAD_ARM_HOME, default='ARM_HOME'):                cv.string,
     vol.Optional(CONF_PAYLOAD_ARM_NIGHT, default='ARM_NIGHT'):              cv.string,
+    vol.Optional(CONF_PAYLOAD_ARM_GARAGE, default='ARM_GARAGE'):            cv.string,
     vol.Optional(CONF_PAYLOAD_DISARM, default='DISARM'):                    cv.string,
     vol.Optional(CONF_OVERRIDE_CODE, default=False):                        cv.boolean,
     vol.Optional(CONF_PENDING_ON_WARNING, default=False):                   cv.boolean,
@@ -302,7 +312,8 @@ PLATFORM_SCHEMA = vol.Schema(vol.All({
     vol.Optional(CONF_STATES):                                     vol.Schema({cv.slug: _state_schema()}),
     vol.Optional(STATE_ALARM_ARMED_AWAY, default={}):              _state_schema(),  #state specific times ###REMOVE###
     vol.Optional(STATE_ALARM_ARMED_HOME, default={}):              _state_schema(),  #state specific times ###REMOVE###
-    vol.Optional(STATE_ALARM_ARMED_NIGHT, default={}):         _state_schema(), #state specific times ###REMOVE###
+    vol.Optional(STATE_ALARM_ARMED_NIGHT, default={}):             _state_schema(), #state specific times ###REMOVE###
+    vol.Optional(STATE_ALARM_ARMED_GARAGE, default={}):            _state_schema(), #state specific time ###REMOVE###
 
     #------------------------------GUI-----------------------------------
     vol.Optional(CONF_PANEL):                                        PANEL_SCHEMA,
@@ -340,6 +351,7 @@ SERVICE_ALARM_SET_IGNORE_OPEN_SENSORS   = 'alarm_set_ignore_open_sensors'
 SERVICE_ALARM_ARM_NIGHT_FROM_PANEL      = 'alarm_arm_night_from_panel'
 SERVICE_ALARM_ARM_HOME_FROM_PANEL       = 'alarm_arm_home_from_panel'
 SERVICE_ALARM_ARM_AWAY_FROM_PANEL       = 'alarm_arm_away_from_panel'
+SERVICE_ALARM_ARM_GARAGE_FROM_PANEL     = 'alarm_arm_garage_from_panel'
 SERVICE_ALARM_YAML_SAVE                 = 'alarm_yaml_save'
 SERVICE_ALARM_YAML_USER                 = 'alarm_yaml_user'
 
@@ -420,6 +432,11 @@ async def async_setup_platform(hass, config, async_add_devices, discovery_info=N
         # TODO: service.endity_id ignored for simplicity, change?
         alarm.alarm_arm_away_from_panel(service.data.get(ATTR_CODE))
 
+    @callback
+    def alarm_arm_garage_from_panel(service):
+        # TODO: service.endity_id ignored for simplicity, change?
+        alarm.alarm_arm_garage_from_panel(service.data.get(ATTR_CODE))
+
     alarm = BWAlarm(hass, config, mqtt)
     hass.bus.async_listen(EVENT_STATE_CHANGED, alarm.state_change_listener)
     hass.bus.async_listen(EVENT_TIME_CHANGED, alarm.time_change_listener)
@@ -434,6 +451,7 @@ async def async_setup_platform(hass, config, async_add_devices, discovery_info=N
     hass.services.async_register('alarm_control_panel', SERVICE_ALARM_ARM_NIGHT_FROM_PANEL, alarm_arm_night_from_panel, ALARM_SERVICE_SCHEMA)
     hass.services.async_register('alarm_control_panel', SERVICE_ALARM_ARM_HOME_FROM_PANEL, alarm_arm_home_from_panel, ALARM_SERVICE_SCHEMA)
     hass.services.async_register('alarm_control_panel', SERVICE_ALARM_ARM_AWAY_FROM_PANEL, alarm_arm_away_from_panel, ALARM_SERVICE_SCHEMA)
+    hass.services.async_register('alarm_control_panel', SERVICE_ALARM_ARM_GARAGE_FROM_PANEL, alarm_arm_garage_from_panel, ALARM_SERVICE_SCHEMA)
 
     _LOGGER.debug("{} end".format(FNAME))
 
@@ -608,6 +626,7 @@ class BWAlarm(alarm.AlarmControlPanel):
             self._payload_arm_home          = self._config[CONF_MQTT].get(CONF_PAYLOAD_ARM_HOME).upper()
             self._payload_arm_away          = self._config[CONF_MQTT].get(CONF_PAYLOAD_ARM_AWAY).upper()
             self._payload_arm_night         = self._config[CONF_MQTT].get(CONF_PAYLOAD_ARM_NIGHT).upper()
+            self._payload_arm_garage        = self._config[CONF_MQTT].get(CONF_PAYLOAD_ARM_GARAGE).upper()
             self._override_code             = self._config[CONF_MQTT].get(CONF_OVERRIDE_CODE)
             self._pending_on_warning        = self._config[CONF_MQTT].get(CONF_PENDING_ON_WARNING)
 
@@ -1152,6 +1171,9 @@ class BWAlarm(alarm.AlarmControlPanel):
     def alarm_arm_away(self, code=None):
         return self.alarm_arm(Events.ArmAway, code, self._ignore_open_sensors)
 
+    def alarm_arm_garage(self, code=None):
+        return self.alarm_arm(Events.ArmGarage, code, self._ignore_open_sensors)
+
     def alarm_arm_night(self, code=None):
         """Wrapper for standard service calls"""
         if self._enable_night_mode:
@@ -1167,6 +1189,9 @@ class BWAlarm(alarm.AlarmControlPanel):
 
     def alarm_arm_away_from_panel(self, code=None):
         return self.alarm_arm(Events.ArmAway, code, True)
+
+    def alarm_arm_garage_from_panel(self, code=None):
+        return self.alarm_arm(Events.ArmGarage, code, True)
 
     def alarm_arm_night_from_panel(self, code=None):
         if self._enable_night_mode:
@@ -1272,11 +1297,20 @@ class BWAlarm(alarm.AlarmControlPanel):
                     self._state = STATE_ALARM_ARMED_NIGHT
                 self._armstate = STATE_ALARM_ARMED_NIGHT
 
+            elif event == Events.ArmGarage:
+                if (datetime.timedelta(seconds=int(self._states[STATE_ALARM_ARMED_GARAGE][CONF_PENDING_TIME])) and override_pending_time == False):
+                    self._armstate = STATE_ALARM_ARMED_GARAGE
+                    self._state = STATE_ALARM_PENDING
+                else:
+                    self._state = STATE_ALARM_ARMED_GARAGE
+                self._armstate = STATE_ALARM_ARMED_GARAGE
+
         elif old_state == STATE_ALARM_PENDING:
             if   event == Events.Timeout:       self._state = self._armstate
 
         elif old_state == STATE_ALARM_ARMED_HOME or \
              old_state == STATE_ALARM_ARMED_AWAY or \
+             old_state == STATE_ALARM_ARMED_GARAGE or \
              old_state == STATE_ALARM_ARMED_NIGHT:
             if   event == Events.ImmediateTrip: self._state = STATE_ALARM_TRIGGERED
             elif event == Events.DelayedTrip:   self._state = STATE_ALARM_WARNING
@@ -1322,6 +1356,9 @@ class BWAlarm(alarm.AlarmControlPanel):
             elif new_state == STATE_ALARM_ARMED_NIGHT:
                 self._returnto = new_state
                 self.setsignals(STATE_ALARM_ARMED_NIGHT)
+            elif new_state == STATE_ALARM_ARMED_GARAGE:
+                self._returnto= new_state
+                self.setsignals(STATE_ALARM_ARMED_GARAGE)
             elif new_state == STATE_ALARM_DISARMED:
                 self._returnto = new_state
                 self.clearsignals()
@@ -1540,6 +1577,8 @@ class BWAlarm(alarm.AlarmControlPanel):
                 self.async_alarm_arm_home(code)
             elif command == self._payload_arm_away:
                 self.async_alarm_arm_away(code)
+            elif command == self._payload_arm_garage:
+                self.async_alarm_arm_garage(code)
             elif command == self._payload_arm_night:
                 if self._enable_night_mode:
                     self.async_alarm_arm_night(code)
